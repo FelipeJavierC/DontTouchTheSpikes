@@ -34,6 +34,7 @@ _PLAY_BOTTOM = HEIGHT - SPIKE_DEPTH
 
 PUBLIC_DIR = Path(__file__).resolve().parent / "Public"
 BIRD_IMG_PATH = PUBLIC_DIR / "pajaro.png"
+MUSIC_PATH = PUBLIC_DIR / "Smooth Criminal - Michael Jackson.mp3"
 CANDY_IMG_PATHS = {
     "blue": PUBLIC_DIR / "dulce azul.png",
     "orange": PUBLIC_DIR / "dulce naranjo.png",
@@ -48,6 +49,8 @@ STATE_SIZE = 10
 
 # Multiplicadores de velocidad de simulación (0 = sin tope de FPS)
 SPEED_STEPS = [0.5, 1, 2, 4, 8, 16, 0]
+VOLUME_STEP = 0.1
+DEFAULT_VOLUME = 0.3
 
 
 def side_spike_count(score):
@@ -229,6 +232,7 @@ class SpikesEnv:
         self.candy_slot = 0
         self.best_score = 0
         self.speed_idx = SPEED_STEPS.index(1)  # 1x por defecto
+        self.volume = DEFAULT_VOLUME
         if self.render_enabled:
             pygame.init()
             self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -238,6 +242,9 @@ class SpikesEnv:
             self.ui_font = pygame.font.SysFont(None, 24)
             self._load_bird_sprite()
             self._load_candy_sprites()
+            pygame.mixer.music.load(str(MUSIC_PATH))
+            pygame.mixer.music.set_volume(self.volume)
+            pygame.mixer.music.play(-1)  # bucle infinito
             # botones velocidad: círculos centrados, encima de pinchos inferiores
             self.btn_color = (255, 52, 100)  # #ff3464
             d, gap, label_w = 26, 8, 36
@@ -254,6 +261,11 @@ class SpikesEnv:
 
     def _change_speed(self, delta):
         self.speed_idx = max(0, min(len(SPEED_STEPS) - 1, self.speed_idx + delta))
+
+    def _change_volume(self, delta):
+        self.volume = round(max(0.0, min(1.0, self.volume + delta)), 1)
+        if self.render_enabled:
+            pygame.mixer.music.set_volume(self.volume)
 
     def _load_bird_sprite(self):
         img = pygame.image.load(str(BIRD_IMG_PATH)).convert_alpha()
@@ -521,6 +533,10 @@ class SpikesEnv:
                     self._change_speed(-1)
                 elif event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
                     self._change_speed(+1)
+                elif event.key == pygame.K_DOWN:
+                    self._change_volume(-VOLUME_STEP)
+                elif event.key == pygame.K_UP:
+                    self._change_volume(+VOLUME_STEP)
 
         bg = bg_color(self.score)
         sc = spike_color(self.score)
@@ -559,6 +575,7 @@ class SpikesEnv:
 
     def close(self):
         if self.render_enabled:
+            pygame.mixer.music.stop()
             pygame.quit()
 
 
